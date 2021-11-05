@@ -7,6 +7,7 @@
 #include "source/common/common/assert.h"
 #include "source/extensions/filters/network/dubbo_proxy/app_exception.h"
 #include "source/extensions/filters/network/dubbo_proxy/message_impl.h"
+#include <cstdlib>
 
 namespace Envoy {
 namespace Extensions {
@@ -22,6 +23,12 @@ void Echo2::onDestroy() {}
 void Echo2::setDecoderFilterCallbacks(DubboFilters::DecoderFilterCallbacks& callbacks) {
   callbacks_ = &callbacks;
 }
+
+void Echo2::onUpstreamData(Buffer::Instance& buffer, bool) {
+  ENVOY_CONN_LOG(info, "upstream data: {}", *callbacks_->connection(), buffer.toString());
+}
+
+static int count = 0;
 
 FilterStatus Echo2::onMessageDecoded(MessageMetadataSharedPtr p, ContextSharedPtr c) {
   ENVOY_CONN_LOG(info, "dubbo decode streamid: {}", *callbacks_->connection(),
@@ -42,14 +49,23 @@ FilterStatus Echo2::onMessageDecoded(MessageMetadataSharedPtr p, ContextSharedPt
                        e.value().getStringView());
         return Http::HeaderMap::Iterate::Continue;
       });
-
+  // invocation->attachment().headers()
   ENVOY_CONN_LOG(info, "dubbo message, {}", *callbacks_->connection(),
                  c->originMessage().toString());
-
-  // callbacks_->sendLocalReply(DubboProxy::AppException(ResponseStatus::ServerError,
-  //                                                     fmt::format("dubbo router: unknown
-  //                                                     cluster")),
-  //                            false);
+  count++;
+  if (count % 3 == 0) {
+    callbacks_->sendLocalReply(
+        DubboProxy::AppException(ResponseStatus::ClientError,
+                                 fmt::format("dubbo router: unknown cluster")),
+        false);
+    return FilterStatus::StopIteration;
+  } else if (count % 3 == 1) {
+    callbacks_->sendLocalReply(
+        DubboProxy::AppException(ResponseStatus::ClientError,
+                                 fmt::format("dubbo router: unknown cluster")),
+        true);
+    return FilterStatus::StopIteration;
+  }
   return FilterStatus::Continue;
 }
 void Echo2::setEncoderFilterCallbacks(DubboFilters::EncoderFilterCallbacks& callbacks) {
@@ -62,9 +78,9 @@ FilterStatus Echo2::onMessageEncoded(MessageMetadataSharedPtr, ContextSharedPtr 
   //                encoder_callbacks_->streamInfo().upstreamHost()->hostname());
   ENVOY_CONN_LOG(info, "dubbo encode message before, {}", *callbacks_->connection(),
                  c->originMessage().toString());
-  auto s = c->originMessage().toString().replace(30, 3, "okk");
-  c->originMessage().writeByte('\0');
-  c->originMessage().prepend(s);
+  // auto s = c->originMessage().toString().replace(30, 3, "okk");
+  // c->originMessage().writeByte('\0');
+  // c->originMessage().prepend(s);
 
   ENVOY_CONN_LOG(info, "dubbo encode message after, {}", *callbacks_->connection(),
                  c->originMessage().toString());

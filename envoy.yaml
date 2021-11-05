@@ -2,18 +2,28 @@ static_resources:
   listeners:
   - address:
       socket_address:
-        address: 0.0.0.0
+        address: 172.30.50.50
         port_value: 20880
     filter_chains:
+    - filter_chain_match:
+        source_ports: 
+        - 12345
+        - 12346
+      filters:
+        name: envoy.filters.network.tcp_proxy
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.network.tcp_proxy.v3.TcpProxy
+          stat_prefix: destination
+          cluster: provider_service
     - filters:
       - name: envoy.filters.network.dubbo_proxy
         typed_config:
           "@type": type.googleapis.com/envoy.extensions.filters.network.dubbo_proxy.v3.DubboProxy
-          stat_prefix: dubbo_incomming_stats
+          stat_prefix: kebe_stats
           protocol_type: Dubbo
           serialization_type: Hessian2
           route_config:
-            name: local_route
+          - name: local_route
             interface: '*'
             routes:
             - match:
@@ -21,13 +31,35 @@ static_resources:
                   name:
                     exact: sayHello
               route:
-                cluster: dubbo_service
+                cluster: provider_service
+            # - route:
+            #     cluster: dubbo_service
           dubbo_filters:
-          - name: envoy.filters.dubbo.echo2
+          - name: envoy.filters.dubbo.wasm
             config:
-              "@type": type.googleapis.com/google.protobuf.Struct
-              value:
-                name: test_service
+              "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+              config:
+                name: "my_plugin"
+                root_id: "my_root_id"
+                # if your wasm filter requires custom configuration you can add
+                # as follows
+                configuration:
+                  "@type": "type.googleapis.com/google.protobuf.StringValue"
+                  value: |
+                    {}
+                vm_config:
+                  runtime: "envoy.wasm.runtime.v8"
+                  vm_id: "my_vm_id"
+                  code:
+                    local:
+                      filename: "examples/wasm-cc/lib/envoy_filter_http_wasm_example.wasm"
+          - name: envoy.filters.dubbo.router
+
+          # - name: envoy.filters.dubbo.echo2
+          #   config:
+          #     "@type": type.googleapis.com/google.protobuf.Struct
+          #     value:
+          #       name: test_service
           # - name: envoy.filters.network.wasm
             # config:
             #   "@type": type.googleapis.com/envoy.extensions.filters.network.wasm.v3.Wasm
@@ -40,10 +72,9 @@ static_resources:
             #           local:
             #             filename: "examples/wasm-cc/lib/envoy_filter_http_wasm_example.wasm"
             #         allow_precompiled: true
-          - name: envoy.filters.dubbo.router
 
   clusters:
-  - name: dubbo_service
+  - name: provider_service
     type: strict_dns
     lb_policy: round_robin
     load_assignment:
@@ -57,12 +88,12 @@ static_resources:
                 port_value: 36615
 
 
-# admin:
-#   address:
-#     socket_address:
-#       protocol: TCP
-#       address: 127.0.0.1
-#       port_value: 9901
+admin:
+  address:
+    socket_address:
+      protocol: TCP
+      address: 0.0.0.0
+      port_value: 9901
 # static_resources:
 #   listeners:
 #   - name: listener_0

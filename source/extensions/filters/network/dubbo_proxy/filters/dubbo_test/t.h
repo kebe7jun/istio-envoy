@@ -1,6 +1,7 @@
 #pragma once
 
 #include "envoy/network/filter.h"
+#include "envoy/tcp/conn_pool.h"
 
 #include "source/common/common/logger.h"
 #include "envoy/upstream/cluster_manager.h"
@@ -16,7 +17,9 @@ namespace Test {
 /**
  * Implementation of a basic echo filter.
  */
-class Echo2 : public DubboFilters::CodecFilter, Logger::Loggable<Logger::Id::dubbo> {
+class Echo2 : public Tcp::ConnectionPool::UpstreamCallbacks,
+              public DubboFilters::CodecFilter,
+              Logger::Loggable<Logger::Id::dubbo> {
 public:
   Echo2(Upstream::ClusterManager& cluster_manager) : cluster_manager_(cluster_manager){};
   ~Echo2() override;
@@ -35,11 +38,12 @@ public:
   // DubboFilter::EncoderFilter
   void setEncoderFilterCallbacks(DubboFilters::EncoderFilterCallbacks& callbacks) override;
   FilterStatus onMessageEncoded(MessageMetadataSharedPtr metadata, ContextSharedPtr ctx) override;
-    // Tcp::ConnectionPool::UpstreamCallbacks
-  // void onUpstreamData(Buffer::Instance& data, bool end_stream) override;
-  // void onEvent(Network::ConnectionEvent event) override;
-  // void onAboveWriteBufferHighWatermark() override {}
-  // void onBelowWriteBufferLowWatermark() override {}
+
+  // Tcp::ConnectionPool::UpstreamCallbacks
+  void onUpstreamData(Buffer::Instance&, bool) override;
+  void onEvent(Network::ConnectionEvent) override{};
+  void onAboveWriteBufferHighWatermark() override {}
+  void onBelowWriteBufferLowWatermark() override {}
 
   // Network::FilterStatus onData(Buffer::Instance& data, bool end_stream) override;
   // Network::FilterStatus onNewConnection() override { return Network::FilterStatus::Continue; }
