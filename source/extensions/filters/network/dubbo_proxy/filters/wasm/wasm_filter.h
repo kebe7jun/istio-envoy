@@ -54,8 +54,8 @@ private:
 using FilterConfigSharedPtr = std::shared_ptr<FilterConfig>;
 
 } // namespace Wasm
-} // namespace HttpFilters
+} // namespace DubboFilters
+} // namespace DubboProxy
+} // namespace NetworkFilters
 } // namespace Extensions
 } // namespace Envoy
-}
-}

@@ -36,7 +36,7 @@ envoy_cc_extension(
         "//source/common/common:empty_string",
         "//source/common/common:logger_lib",
         # "//source/common/config:datasource_lib",
-        "//source/common/chromium_url:chromium_url",
+        "//source/common/chromium_url",
         "//source/extensions/common/wasm:wasm_lib",
         "@envoy_api//envoy/extensions/filters/http/wasm/v3:pkg_cc_proto",
         "//source/extensions/filters/network/dubbo_proxy/filters:factory_base_lib",

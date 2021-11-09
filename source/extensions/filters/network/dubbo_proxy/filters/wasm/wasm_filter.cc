@@ -1,4 +1,3 @@
-
 #include "wasm_filter.h"
 
 namespace Envoy {

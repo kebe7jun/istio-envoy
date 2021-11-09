@@ -2,9 +2,9 @@
 
 #include "envoy/network/filter.h"
 #include "envoy/tcp/conn_pool.h"
+#include "envoy/upstream/cluster_manager.h"
 
 #include "source/common/common/logger.h"
-#include "envoy/upstream/cluster_manager.h"
 #include "source/extensions/filters/network/dubbo_proxy/filters/filter.h"
 
 namespace Envoy {

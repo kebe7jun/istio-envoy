@@ -1,10 +1,11 @@
 #include <string>
 
-#include "t.h"
-
 #include "envoy/registry/registry.h"
 #include "envoy/server/filter_config.h"
+
 #include "source/extensions/filters/network/dubbo_proxy/filters/filter_config.h"
+
+#include "t.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -18,12 +19,13 @@ namespace Test {
  */
 class Echo2ConfigFactory : public NamedDubboFilterConfigFactory {
 public:
-  DubboFilters::FilterFactoryCb createFilterFactoryFromProto(const Protobuf::Message&,
-                                                        const std::string&, Server::Configuration::FactoryContext& context) override {
-                                                            
+  DubboFilters::FilterFactoryCb
+  createFilterFactoryFromProto(const Protobuf::Message&, const std::string&,
+                               Server::Configuration::FactoryContext& context) override {
+
     return [&context](DubboFilters::FilterChainFactoryCallbacks& callbacks) -> void {
-        // callbacks.addFilter(DubboFilters::CodecFilterSharedPtr(std::make_shared<Echo2>(context.clusterManager())));
-        callbacks.addFilter(std::make_shared<Echo2>(context.clusterManager()));
+      // callbacks.addFilter(DubboFilters::CodecFilterSharedPtr(std::make_shared<Echo2>(context.clusterManager())));
+      callbacks.addFilter(std::make_shared<Echo2>(context.clusterManager()));
     };
   }
 
@@ -32,7 +34,6 @@ public:
   }
 
   std::string name() const override { return "envoy.filters.dubbo.echo2"; }
-
 };
 
 /**
@@ -41,9 +42,9 @@ public:
 // static Registry::RegisterFactory<Echo2ConfigFactory, NamedDubboFilterConfigFactory> registered_;
 REGISTER_FACTORY(Echo2ConfigFactory, DubboFilters::NamedDubboFilterConfigFactory);
 
-} // namespace Configuration
-} // namespace Server
+} // namespace Test
+} // namespace DubboFilters
+} // namespace DubboProxy
+} // namespace NetworkFilters
+} // namespace Extensions
 } // namespace Envoy
-}
-}
-}

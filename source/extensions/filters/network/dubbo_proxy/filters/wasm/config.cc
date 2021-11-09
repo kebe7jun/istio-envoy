@@ -1,24 +1,23 @@
-
-#include "source/common/common/logger.h"
-#include "source/common/common/logger_impl.h"
-#include "envoy/extensions/filters/http/wasm/v3/wasm.pb.validate.h"
-#include "envoy/extensions/filters/http/wasm/v3/wasm.pb.h"
-#include "envoy/registry/registry.h"
-
-#include "source/common/common/empty_string.h"
-#include "wasm_filter.h"
 #include "config.h"
-#include "source/common/chromium_url/envoy_shim.h"
 
 #include "envoy/buffer/buffer.h"
-#include "envoy/network/connection.h"
+#include "envoy/extensions/filters/http/wasm/v3/wasm.pb.h"
+#include "envoy/extensions/filters/http/wasm/v3/wasm.pb.validate.h"
 #include "envoy/http/header_map.h"
+#include "envoy/network/connection.h"
+#include "envoy/registry/registry.h"
 
+#include "source/common/chromium_url/envoy_shim.h"
 #include "source/common/common/assert.h"
+#include "source/common/common/empty_string.h"
+#include "source/common/common/logger.h"
+#include "source/common/common/logger_impl.h"
+#include "source/extensions/filters/network/dubbo_proxy/app_exception.h"
 #include "source/extensions/filters/network/dubbo_proxy/filters/factory_base.h"
 #include "source/extensions/filters/network/dubbo_proxy/filters/filter_config.h"
-#include "source/extensions/filters/network/dubbo_proxy/app_exception.h"
 #include "source/extensions/filters/network/dubbo_proxy/message_impl.h"
+
+#include "wasm_filter.h"
 
 namespace Envoy {
 namespace Extensions {
@@ -48,6 +47,8 @@ public:
           return Http::HeaderMap::Iterate::Continue;
         });
 
+    ENVOY_CONN_LOG(info, "dubbo header size: {}, body size {}", *callbacks_->connection(),
+                   ctx->headerSize(), ctx->bodySize());
     auto s = f_->decodeHeaders(*h, false);
     if (s != Http::FilterHeadersStatus::Continue) {
       return FilterStatus::StopIteration;
@@ -67,15 +68,17 @@ public:
     // auto h = Http::ResponseHeaderMapImpl::create();
     // invocation->attachment().headers().iterate(
     //     [&h](const Http::HeaderEntry& e) -> Http::HeaderMap::Iterate {
-    //       h.set
-    //       h->setByKey(e.key().getStringView(), e.value().getStringView());
+    //       Http::LowerCaseString hh{e.key().getStringView()};
+    //       h->appendCopy(hh, e.value().getStringView());
+    //       // h->setByKey(e.key().getStringView(), e.value().getStringView());
     //       return Http::HeaderMap::Iterate::Continue;
     //     });
-    // f_->encodeHeaders(ResponseHeaderMap &headers, bool end_stream)
     // f_->encodeHeaders(*h, false);
     f_->encodeData(ctx->originMessage(), false);
     ENVOY_CONN_LOG(info, "dubbo encode message after, {}", *callbacks_->connection(),
-                 ctx->originMessage().toString());
+                   ctx->originMessage().toString());
+    ENVOY_CONN_LOG(info, "dubbo response header size: {}, body size {}", *callbacks_->connection(),
+                   ctx->headerSize(), ctx->bodySize());
     return FilterStatus::Continue;
   };
 
@@ -84,19 +87,13 @@ private:
   Http::StreamFilterSharedPtr f_;
 };
 
+DubboFilters::FilterFactoryCb WasmFilterConfig::createFilterFactoryFromProtoTyped(
+    const envoy::extensions::filters::http::wasm::v3::Wasm& proto_config, const std::string&,
+    Server::Configuration::FactoryContext& context) {
 
-DubboFilters::FilterFactoryCb WasmFilterConfig::createFilterFactoryFromProtoTyped(const envoy::extensions::filters::http::wasm::v3::Wasm& proto_config, const std::string&,
-                              Server::Configuration::FactoryContext& context) {
-
-  // auto wasm_proto = Envoy::MessageUtil::downcastAndValidate<
-  //     const envoy::extensions::filters::http::wasm::v3::Wasm&>(
-  //     proto_config, context.messageValidationVisitor());
-  // envoy::extensions::filters::http::wasm::v3::Wasm x{};
-  // x.ParseFromString(proto_config.SerializeAsString());
-  // const envoy::extensions::filters::http::wasm::v3::Wasm& xx = x;
   context.api().customStatNamespaces().registerStatNamespace(
       Extensions::Common::Wasm::CustomStatNamespace);
-      // ENVOY_LOG(info, "get x {}", x);
+  // ENVOY_LOG(info, "get x {}", x);
   auto filter_config = std::make_shared<FilterConfig>(proto_config, context);
   return [filter_config](DubboFilters::FilterChainFactoryCallbacks& callbacks) -> void {
     auto filter = filter_config->createFilter();
